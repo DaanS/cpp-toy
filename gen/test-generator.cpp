@@ -95,16 +95,38 @@ struct number {
 bool is_even(int n) { return n % 2 == 0; }
 int times_hundred(int n) { return n * 100; }
 
+struct is_even_functor {
+    constexpr is_even_functor() {}
+    constexpr bool operator()(int n) const { return n % 2 == 0; }
+};
+
+template<typename T>
+void print_type_traits(T&& t) {
+    std::cout << "const: " << std::is_const<T>::value << std::endl;
+    std::cout << "ref:   " << std::is_reference<T>::value << std::endl;
+}
+
+template<typename T>
+constexpr decltype(auto) first_element(T&& t) {
+    return t[0];
+}
+
 using gen::select;
 using gen::where;
 using gen::make_array;
 
 int main() {
     constexpr std::array<size_t, 11> integers = make_array(std::make_index_sequence<11>());
+    std::cout << std::integral_constant<int, first_element(integers)>::value << std::endl;
+    constexpr is_even_functor functor;
+    constexpr auto tmp = where(functor);
+    //constexpr auto res_const = operator|(integers, where(functor));
+    print_type_traits(integers);
     constexpr auto res_const = integers
                              | where(is_even)
                              | gen::select(times_hundred);
     for (auto n : res_const) std::cout << n << std::endl;
+
     auto res = integers
              | where([](int n) { return n % 2 == 0; })
              | gen::select([](int n) { return n * 100; });

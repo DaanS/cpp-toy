@@ -51,6 +51,9 @@ struct table {
 
 using namespace std;
 
+template<typename T, typename U> constexpr bool
+is_same_v = is_same<T, U>::value;
+
 int main () { 
     auto tab = table<
         row<state_stopped, event_start, state_started, &start>,
@@ -62,10 +65,10 @@ int main () {
         row<state_started, event_stop , state_stopped, &stop >
     >();
 
-    cout << is_same<state_stopped, remove_const<tuple_element<0, decltype(tup)>::type>::type>::value << endl;
-    cout << is_same<state_started, remove_const<tuple_element<1, decltype(tup)>::type>::type>::value << endl;
-    cout << is_same<state_started, remove_const<tuple_element<2, decltype(tup)>::type>::type>::value << endl;
-    cout << is_same<state_stopped, remove_const<tuple_element<3, decltype(tup)>::type>::type>::value << endl;
+    cout << is_same_v<state_stopped, remove_const_t<tuple_element_t<0, decltype(tup)>>> << endl;
+    cout << is_same_v<state_started, remove_const_t<tuple_element_t<1, decltype(tup)>>> << endl;
+    cout << is_same_v<state_started, remove_const_t<tuple_element_t<2, decltype(tup)>>> << endl;
+    cout << is_same_v<state_stopped, remove_const_t<tuple_element_t<3, decltype(tup)>>> << endl;
 }
 
 #endif

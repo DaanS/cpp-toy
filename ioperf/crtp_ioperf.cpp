@@ -8,10 +8,9 @@
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/parsers.hpp>
 
-//#include "benchmark.h"
-#include "source.h"
-#include "sink.h"
-#include "pipe.h"
+#include "crtp_source.h"
+#include "crtp_sink.h"
+#include "crtp_pipe.h"
 
 namespace ygg {
 
@@ -22,40 +21,36 @@ struct data_point {
     uint_fast64_t count;
 };
 
-template<size_t Capacity>
+template<typename WordType, typename SourceType, typename SinkType, size_t Capacity>
 class fixed_worker {
-    std::array<char, Capacity> buf;
-    std::shared_ptr<source> src;
-    std::shared_ptr<sink> dst;
+    std::array<WordType, Capacity> buf;
+    std::shared_ptr<SourceType> src;
+    std::shared_ptr<SinkType> dst;
     bool stopped;
-    std::atomic_uint_fast64_t bytes_written;
+    std::atomic_uint_fast64_t elts_written;
 
     public:
-        fixed_worker(std::shared_ptr<source> src, std::shared_ptr<sink> dst) : 
-            src(src), 
-            dst(dst), 
+        fixed_worker(std::shared_ptr<SourceType> src, std::shared_ptr<SinkType> dst) :
+            src(src),
+            dst(dst),
             stopped(false),
-            bytes_written(0) {}
+            elts_written(0) {}
 
-        void work(std::string name) {
-            //std::cout << "Worker " << name << " starting..." << std::endl;
-
+        void work() {
             while (!stopped) {
                 size_t count = src->get(buf.data(), Capacity);
 
                 size_t write_idx = 0;
                 while (write_idx < count && !stopped) {
-                    write_idx += dst->put(buf.data() + write_idx, count - write_idx);       
+                    write_idx += dst->put(buf.data() + write_idx, count - write_idx);
                 }
-                bytes_written += count;
+                elts_written += count; 
             }
-
-            //std::cout << "Worker " << name << " done." << std::endl;
         }
 
         void poll(data_point& data) {
             data.time = clock::now();
-            data.count = bytes_written;
+            data.count = elts_written;
         }
 
         void stop() {
@@ -92,19 +87,24 @@ int main(int argc, char* argv[]) {
     if (vm.count("help")) std::cout << desc << std::endl;
 
     // Set up pipeline
-    auto src = std::make_shared<random_buf_source<1*1024*1024> >();
-    auto dst = std::make_shared<null_sink>();
-    auto pipe = std::make_shared<fixed_pipe<1*1024*1024> >();
+    using WordType = unsigned char;
+    using SourceType = random_buf_source<WordType, 1*1024*1204>;
+    using SinkType = null_sink<WordType>;
+    using PipeType = fixed_pipe<WordType, 1*1024*1024>;
 
-    auto w1 = std::make_shared<fixed_worker<1*256*1024> >(src, pipe);
-    auto w2 = std::make_shared<fixed_worker<1*256*1024> >(pipe, dst);
+    auto src = std::make_shared<SourceType>();
+    auto dst = std::make_shared<SinkType>();
+    auto pipe = std::make_shared<PipeType>();
+
+    auto w1 = std::make_shared<fixed_worker<WordType, SourceType, PipeType, 1*256*1024>>(src, pipe);
+    auto w2 = std::make_shared<fixed_worker<WordType, PipeType, SinkType, 1*256*1024> >(pipe, dst);
 
     std::vector<data_point> d1(sample_count);
     std::vector<data_point> d2(sample_count);
 
     // Run
-    std::thread t1([w1] {w1->work("w1");});
-    std::thread t2([w2] {w2->work("w2");});
+    std::thread t1([w1] {w1->work();});
+    std::thread t2([w2] {w2->work();});
     
     // Poll
     clock::time_point start = clock::now();
@@ -125,6 +125,9 @@ int main(int argc, char* argv[]) {
 
         size_t delta1 = 0;
         size_t delta2 = 0;
+
+        d1[i].count *= sizeof(WordType);
+        d2[i].count *= sizeof(WordType);
 
         if (i > 0) {
             delta1 = (d1[i].count - d1[i - 1].count) / 1024;       

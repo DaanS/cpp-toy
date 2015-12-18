@@ -22,10 +22,6 @@ struct benchmark {
 
         return dur.count();
     }
-
-    static long dur(clock::time_point start, clock::time_point end) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    }
 };
 
 benchmark::clock::time_point benchmark::start_time;

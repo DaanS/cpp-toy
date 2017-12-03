@@ -1,2 +1,2 @@
 "nnoremap <F10> :wa<CR>:!g++ -g -std=c++11 -O3 % && ./a.out<CR>
-nnoremap <F10> :wa<CR>:!$HOME/app/clang-3.6.2/bin/clang++ -std=c++14 -O3 % && ./a.out<CR>
+nnoremap <F10> :wa<CR>:!$HOME/app/clang-5.0.0/bin/clang++ -std=c++17 -O3 % && ./a.out<CR>

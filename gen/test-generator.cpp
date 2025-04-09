@@ -48,7 +48,7 @@ struct pipeable {
 
     template<typename Generator>
     constexpr static generator<Generator> pipe(Generator&& gen, Op&& p) {
-        return generator<Generator>{std::forward<Generator>(gen), std::forward<Op>(p)};    
+        return generator<Generator>{std::forward<Generator>(gen), std::forward<Op>(p)};
     }
 };
 
@@ -59,7 +59,7 @@ template<typename Pred>
 struct where_impl : pipeable<where_impl<Pred>> {
     Pred const pred;
     constexpr where_impl(Pred pred) : pred(pred) { }
-    
+
     template<typename Iterator>
     constexpr decltype(auto) operator()(Iterator& it, Iterator const& end, size_t n) const {
         for (size_t i = 0; i < n; ++i) {
@@ -116,7 +116,7 @@ using gen::where;
 using gen::make_array;
 
 int main() {
-    constexpr std::array<size_t, 11> integers = make_array(std::make_index_sequence<11>());
+    constexpr static std::array<size_t, 11> integers = make_array(std::make_index_sequence<11>());
     std::cout << std::integral_constant<int, first_element(integers)>::value << std::endl;
     constexpr is_even_functor functor;
     constexpr auto tmp = where(functor);
